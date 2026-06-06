@@ -1,0 +1,35 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Node / build artifacts
+node_modules/
+dist/
+build/
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# Media outputs
+*.mp4
+*.mp3
+*.wav
+*.mov
+*.mkv
+*.webm
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
