@@ -1,0 +1,727 @@
+{
+  "name": "YTOS 02 - Research to Script MVP",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -32
+      ],
+      "id": "7a740ae4-29d5-42e3-90ef-6b5dab22e88f",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"topic\": \"Errores comunes al automatizar contenido de YouTube con IA\",\n  \"audience\": \"creadores de contenido, coaches, emprendedores y dueños de negocio\",\n  \"workflow_name\": \"YTOS 02 - Research to Script MVP\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        -32
+      ],
+      "id": "025f16b4-6702-462d-8a8a-ed45d693daf0",
+      "name": "Set Topic"
+    },
+    {
+      "parameters": {
+        "tableId": "workflow_runs",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "workflow_name",
+              "fieldValue": "={{ $json.workflow_name }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "Started"
+            },
+            {
+              "fieldId": "input",
+              "fieldValue": "={{ $json.topic }}{{ $json.audience }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        448,
+        -32
+      ],
+      "id": "aff6c991-d6ef-485b-9515-6a934795218f",
+      "name": "Create Workflow Run",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"=You are a research assistant for a YouTube content automation system.\\n\\nResearch this topic:\\n{{ $('Set Topic').item.json.topic }}\\n\\nTarget audience:\\n{{ $('Set Topic').item.json.audience }}\\n\\nReturn:\\n1. Topic Summary\\n2. Recommended Angle\\n3. Audience Relevance\\n4. Key Points\\n5. Examples or Stories\\n6. Risks or Claims to Verify\\n7. Visual Ideas\\n8. Suggested Hook\"\n        }\n      ]\n    }\n  ]\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        -32
+      ],
+      "id": "38983d44-cf61-423f-b226-f8f10e94fead",
+      "name": "Gemini Research",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "RbvtrbSpzI1Hlxlr",
+          "name": "youtube-content-os-gemini"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "32424613-4329-4cc0-aa3a-c9bbe5ce729c",
+              "name": "topic",
+              "value": "={{ $('Set Topic').item.json.topic }}",
+              "type": "string"
+            },
+            {
+              "id": "ded921b0-aabe-45c7-a792-1b0c7c254515",
+              "name": "audience",
+              "value": "={{ $('Set Topic').item.json.audience }}",
+              "type": "string"
+            },
+            {
+              "id": "3e9619c2-4e99-4f51-9cd3-386c2022f516",
+              "name": "id",
+              "value": "={{ $('Create Workflow Run').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "6ffbddd8-0b5e-4942-8256-a4bd99d90464",
+              "name": "content.parts[0].text",
+              "value": "={{ $json.content.parts[0].text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1024,
+        -32
+      ],
+      "id": "c56b4698-61d6-4646-8c4f-b07ead04d45f",
+      "name": "Extract Gemini Research",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-5-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a YouTube content strategist and JSON formatter. Return only valid JSON. Score all numeric fields from 1 to 10.\n\nReturn JSON with the following individual fields : topic, angle, audience, summary, key_points, suggested_hook, visual_ideas, risks_to_verify, score.trend_score, score.audience_fit_score, score.competition_score, score.production_effort_score, score.evergreen_score, score.monetization_score, score.final_priority_score"
+            },
+            {
+              "content": "=Topic: {{ $('Set Topic').item.json.topic }}\n\nAudience:{{ $('Set Topic').item.json.audience }}\n\nReasearch brief: {{ $json.content.parts[0].text }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1248,
+        -32
+      ],
+      "id": "981605b3-1a19-4b8d-9bdd-642726db93b0",
+      "name": "OpenAI Content Score JSON",
+      "credentials": {
+        "openAiApi": {
+          "id": "B7VsF5clSdmXgyrW",
+          "name": "youtube-content-os-openai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output[0].content[0].text;\n\nlet parsed;\n\ntry {\n  parsed = JSON.parse(raw);\n} catch (error) {\n  throw new Error(`OpenAI did not return valid JSON: ${error.message}\\nRaw response: ${raw}`);\n}\n\nreturn [\n  {\n    json: {\n      topic: parsed.topic,\n      angle: parsed.angle,\n      audience: Array.isArray(parsed.audience)\n        ? parsed.audience.join(\", \")\n        : parsed.audience,\n      audience_raw: parsed.audience,\n      summary: parsed.summary,\n      key_points: parsed.key_points || [],\n      suggested_hook: parsed.suggested_hook,\n      visual_ideas: parsed.visual_ideas || [],\n      risks_to_verify: parsed.risks_to_verify || [],\n      trend_score: parsed.score?.trend_score,\n      audience_fit_score: parsed.score?.audience_fit_score,\n      competition_score: parsed.score?.competition_score,\n      production_effort_score: parsed.score?.production_effort_score,\n      evergreen_score: parsed.score?.evergreen_score,\n      monetization_score: parsed.score?.monetization_score,\n      final_priority_score: parsed.score?.final_priority_score,\n      content_score_json: parsed,\n      content_score_json_raw: raw\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        -32
+      ],
+      "id": "6e8cdaee-be8e-4968-86f9-b8b4d99331c9",
+      "name": "Parse OpenAI Content JSON"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "claude-sonnet-4-5-20250929",
+          "mode": "list",
+          "cachedResultName": "claude-sonnet-4-5-20250929"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={\n  \"messages\": [\n    {\n      \"content\": \"=You are a senior YouTube scriptwriter.\\n\\nCreate a high-quality YouTube script based on this content plan.\\n\\nTopic:\\n{{$json.topic}}\\n\\nAngle:\\n{{$json.angle}}\\n\\nAudience:\\n{{$json.audience}}\\n\\nSummary:\\n{{$json.summary}}\\n\\nKey points:\\n{{JSON.stringify($json.key_points)}}\\n\\nSuggested hook:\\n{{$json.suggested_hook}}\\n\\nVisual ideas:\\n{{JSON.stringify($json.visual_ideas)}}\\n\\nRisks to verify:\\n{{JSON.stringify($json.risks_to_verify)}}\\n\\nImportant rules:\\n- Write in Spanish.\\n- Do not invent personal stories, numbers, client results, revenue, years of experience, or channel performance.\\n- Do not use placeholders like [X], [Tu Nombre], or fake statistics.\\n- If a personal example is needed, use a generic example.\\n- Avoid exaggerated claims.\\n- Avoid fake facts.\\n- Use a professional but engaging tone.\\n- Make the script useful for coaches, entrepreneurs, content creators and business owners.\\n- Keep the title strong but not excessively clickbait.\\n\\nReturn the output using this exact structure:\\n\\n# Title Suggestion\\n# Alternative Titles\\n# Hook\\n# Full Script\\n# Scene Breakdown\\n# Visual Notes\\n# CTA\\n# Shorts Ideas\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        "simplify": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -256
+      ],
+      "id": "d9b0216f-aa6e-4b0a-9912-6682fbc8cd7c",
+      "name": "Message a model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "I33TALKEVTQZIoXQ",
+          "name": "youtube-content-os-claude"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-pro-latest",
+          "mode": "list",
+          "cachedResultName": "models/gemini-pro-latest"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={\n  \"messages\": [\n    {\n      \"content\": \"=You are a senior YouTube scriptwriter.\\n\\nCreate a high-quality YouTube script based on this content plan.\\n\\nTopic:\\n{{$json.topic}}\\n\\nAngle:\\n{{$json.angle}}\\n\\nAudience:\\n{{$json.audience}}\\n\\nSummary:\\n{{$json.summary}}\\n\\nKey points:\\n{{JSON.stringify($json.key_points)}}\\n\\nSuggested hook:\\n{{$json.suggested_hook}}\\n\\nVisual ideas:\\n{{JSON.stringify($json.visual_ideas)}}\\n\\nRisks to verify:\\n{{JSON.stringify($json.risks_to_verify)}}\\n\\nImportant rules:\\n- Write in Spanish.\\n- Do not invent personal stories, numbers, client results, revenue, years of experience, or channel performance.\\n- Do not use placeholders like [X], [Tu Nombre], or fake statistics.\\n- If a personal example is needed, use a generic example.\\n- Avoid exaggerated claims.\\n- Avoid fake facts.\\n- Use a professional but engaging tone.\\n- Make the script useful for coaches, entrepreneurs, content creators and business owners.\\n- Keep the title strong but not excessively clickbait.\\n\\nReturn the output using this exact structure:\\n\\n# Title Suggestion\\n# Alternative Titles\\n# Hook\\n# Full Script\\n# Scene Breakdown\\n# Visual Notes\\n# CTA\\n# Shorts Ideas\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1824,
+        -32
+      ],
+      "id": "525527d8-6451-40f8-ac33-f0422600898b",
+      "name": "AI Script Writer",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "RbvtrbSpzI1Hlxlr",
+          "name": "youtube-content-os-gemini"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const score = $('Parse OpenAI Content JSON').first().json;\n\n// Soporta salida tipo Gemini:\n// $json.content.parts[0].text\n//\n// Y también salida tipo Claude:\n// $json.content[0].text\n\nlet scriptText = '';\n\nif ($json.content?.parts?.[0]?.text) {\n  scriptText = $json.content.parts[0].text;\n} else if (Array.isArray($json.content) && $json.content[0]?.text) {\n  scriptText = $json.content[0].text;\n} else {\n  throw new Error('No script text found in AI response');\n}\n\nreturn {\n  json: {\n    workflow_run_id: $('Create Workflow Run').first().json.id,\n\n    topic: score.topic,\n    angle: score.angle,\n    audience: score.audience,\n\n    summary: score.summary,\n    key_points: score.key_points || [],\n    suggested_hook: score.suggested_hook,\n    visual_ideas: score.visual_ideas || [],\n    risks_to_verify: score.risks_to_verify || [],\n\n    trend_score: score.trend_score,\n    audience_fit_score: score.audience_fit_score,\n    competition_score: score.competition_score,\n    production_effort_score: score.production_effort_score,\n    evergreen_score: score.evergreen_score,\n    monetization_score: score.monetization_score,\n    final_priority_score: score.final_priority_score,\n\n    content_score_json: score.content_score_json,\n\n    script_text: scriptText\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2176,
+        -32
+      ],
+      "id": "4ad4699d-6154-4b56-aac1-e34ead1070be",
+      "name": "Normalize AI Script Output"
+    },
+    {
+      "parameters": {
+        "tableId": "research_briefs",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "idea_id",
+              "fieldValue": "={{ $json.idea_id }}"
+            },
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $json.title }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.status }}"
+            },
+            {
+              "fieldId": "brief",
+              "fieldValue": "={{ $json.brief }}"
+            },
+            {
+              "fieldId": "sources",
+              "fieldValue": "={{ $json.sources }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2848,
+        -32
+      ],
+      "id": "d129934c-e127-4fc3-9cbf-1f44ccf68e63",
+      "name": "Insert Research Brief",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "content_ideas",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "topic",
+              "fieldValue": "={{ $json.topic }}"
+            },
+            {
+              "fieldId": "source",
+              "fieldValue": "n8n_mvp"
+            },
+            {
+              "fieldId": "angle",
+              "fieldValue": "={{ $json.angle }}"
+            },
+            {
+              "fieldId": "audience",
+              "fieldValue": "={{ $json.audience }}"
+            },
+            {
+              "fieldId": "trend_score",
+              "fieldValue": "={{ $json.trend_score }}"
+            },
+            {
+              "fieldId": "audience_fit_score",
+              "fieldValue": "={{ $json.audience_fit_score }}"
+            },
+            {
+              "fieldId": "competition_score",
+              "fieldValue": "={{ $json.competition_score }}"
+            },
+            {
+              "fieldId": "production_effort_score",
+              "fieldValue": "={{ $json.production_effort_score }}"
+            },
+            {
+              "fieldId": "evergreen_score",
+              "fieldValue": "={{ $json.evergreen_score }}"
+            },
+            {
+              "fieldId": "monetization_score",
+              "fieldValue": "={{ $json.monetization_score }}"
+            },
+            {
+              "fieldId": "final_priority_score",
+              "fieldValue": "={{ $json.final_priority_score }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "draft"
+            },
+            {
+              "fieldId": "metadata",
+              "fieldValue": "={{ $json.content_score_json }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        -32
+      ],
+      "id": "533a368b-5aac-410c-b3ff-973f0e69755f",
+      "name": "Insert Content Idea",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $('Normalize AI Script Output').first().json;\nconst insertedIdea = $('Insert Content Idea').first().json;\n\nif (!insertedIdea.id) {\n  throw new Error('Insert Content Idea did not return an id');\n}\n\nif (insertedIdea.id === payload.workflow_run_id) {\n  throw new Error('Invalid mapping: inserted idea id equals workflow_run_id');\n}\n\nreturn {\n  json: {\n    idea_id: insertedIdea.id,\n    title: payload.topic,\n    status: 'draft',\n    brief: {\n      summary: payload.summary,\n      key_points: payload.key_points,\n      suggested_hook: payload.suggested_hook,\n      visual_ideas: payload.visual_ideas,\n      risks_to_verify: payload.risks_to_verify,\n      score: payload.content_score_json?.score || {}\n    },\n    sources: [],\n    payload\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2624,
+        -32
+      ],
+      "id": "302f14e6-86dd-48b8-ac45-7ad8bb1928ea",
+      "name": "Prepare Research Brief Row"
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepared = $('Prepare Research Brief Row').first().json;\nconst researchBrief = $('Insert Research Brief').first().json;\n\nif (!researchBrief.id) {\n  throw new Error('Insert Research Brief V2 did not return an id');\n}\n\nreturn {\n  json: {\n    ...prepared.payload,\n    idea_id: prepared.idea_id,\n    research_brief_id: researchBrief.id\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3072,
+        -32
+      ],
+      "id": "036eb39c-de72-41f2-aab0-27c063c51509",
+      "name": "Merge Research Brief With Payload"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $json;\n\nif (!payload.idea_id) {\n  throw new Error('Missing idea_id');\n}\n\nif (!payload.research_brief_id) {\n  throw new Error('Missing research_brief_id');\n}\n\nif (!payload.script_text) {\n  throw new Error('Missing script_text');\n}\n\nreturn {\n  json: {\n    idea_id: payload.idea_id,\n    research_brief_id: payload.research_brief_id,\n    title: payload.topic,\n    hook: payload.suggested_hook,\n    script_text: payload.script_text,\n    status: 'draft',\n    metadata: {\n      workflow_run_id: payload.workflow_run_id,\n      angle: payload.angle,\n      audience: payload.audience,\n      final_priority_score: payload.final_priority_score,\n      content_score: payload.content_score_json\n    },\n    payload\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3296,
+        -32
+      ],
+      "id": "4fc3ead1-f491-46a5-9f31-b31108fc9f77",
+      "name": "Prepare Script Row"
+    },
+    {
+      "parameters": {
+        "tableId": "scripts",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "idea_id",
+              "fieldValue": "={{ $json.idea_id }}"
+            },
+            {
+              "fieldId": "research_brief_id",
+              "fieldValue": "={{ $json.research_brief_id }}"
+            },
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $json.title }}"
+            },
+            {
+              "fieldId": "hook",
+              "fieldValue": "={{ $json.hook }}"
+            },
+            {
+              "fieldId": "script_text",
+              "fieldValue": "={{ $json.script_text }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.status }}"
+            },
+            {
+              "fieldId": "metadata",
+              "fieldValue": "={{ $json.metadata }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        3520,
+        -32
+      ],
+      "id": "7d648074-96eb-4bec-96f1-130e3c8be782",
+      "name": "Insert Script V2",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const script = $('Insert Script V2').first().json;\nconst preparedScript = $('Prepare Script Row').first().json;\nconst payload = preparedScript.payload;\n\nif (!script.id) {\n  throw new Error('Insert Script V2 did not return an id');\n}\n\nif (!payload.workflow_run_id) {\n  throw new Error('Missing workflow_run_id');\n}\n\nreturn {\n  json: {\n    workflow_run_id: payload.workflow_run_id,\n    status: 'completed',\n    finished_at: new Date().toISOString(),\n    output: {\n      idea_id: payload.idea_id,\n      research_brief_id: payload.research_brief_id,\n      script_id: script.id,\n      topic: payload.topic,\n      final_priority_score: payload.final_priority_score\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3744,
+        -32
+      ],
+      "id": "3a80024e-6444-42b8-87e4-32553026c9a9",
+      "name": "Prepare Workflow Completed Row"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "workflow_runs",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{$json.workflow_run_id}}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.status }}"
+            },
+            {
+              "fieldId": "finished_at",
+              "fieldValue": "={{ $json.finished_at }}"
+            },
+            {
+              "fieldId": "output",
+              "fieldValue": "={{ $json.output }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        3968,
+        -32
+      ],
+      "id": "973d204f-45e9-48aa-8774-fadbdaa358f6",
+      "name": "Update Workflow Run Completed V2",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Set Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Topic": {
+      "main": [
+        [
+          {
+            "node": "Create Workflow Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Workflow Run": {
+      "main": [
+        [
+          {
+            "node": "Gemini Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Research": {
+      "main": [
+        [
+          {
+            "node": "Extract Gemini Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Gemini Research": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Content Score JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Content Score JSON": {
+      "main": [
+        [
+          {
+            "node": "Parse OpenAI Content JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse OpenAI Content JSON": {
+      "main": [
+        [
+          {
+            "node": "AI Script Writer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Script Writer": {
+      "main": [
+        [
+          {
+            "node": "Normalize AI Script Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize AI Script Output": {
+      "main": [
+        [
+          {
+            "node": "Insert Content Idea",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Research Brief": {
+      "main": [
+        [
+          {
+            "node": "Merge Research Brief With Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Content Idea": {
+      "main": [
+        [
+          {
+            "node": "Prepare Research Brief Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Research Brief Row": {
+      "main": [
+        [
+          {
+            "node": "Insert Research Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Research Brief With Payload": {
+      "main": [
+        [
+          {
+            "node": "Prepare Script Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Script Row": {
+      "main": [
+        [
+          {
+            "node": "Insert Script V2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Script V2": {
+      "main": [
+        [
+          {
+            "node": "Prepare Workflow Completed Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Workflow Completed Row": {
+      "main": [
+        [
+          {
+            "node": "Update Workflow Run Completed V2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "4b59cf09-cf22-4209-a185-6f4e733a679b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "63fefac062a793837e11413710d67cf649d62a6e407709d9e139775c592e47e9"
+  },
+  "id": "Rs0sKIB9jQvFKoaG",
+  "tags": []
+}
