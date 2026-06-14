@@ -1,0 +1,308 @@
+{
+  "name": "YTOS 04 - Human Review Decision",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4cdc5936-65a3-484d-9bc9-ee9ba4057733",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"quality_review_id\": \"ee78b6c5-2f59-4caa-b909-d6045958fbbf\",\n  \"decision\": \"approved_for_audio\",\n  \"reviewer_name\": \"Ernesto\",\n  \"notes\": \"Paquete aprobado para iniciar generación de audio.\",\n  \"score_overall\": 8,\n  \"score_title\": 8,\n  \"score_description\": 8,\n  \"score_thumbnail\": 7,\n  \"score_script\": 8,\n  \"score_factuality\": 8\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "id": "4e1baf4f-951b-4734-9926-5d1f0d63255b",
+      "name": "Set Review Decision"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "quality_reviews",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.quality_review_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "a1fc06a2-6bdd-4e52-9a77-9c309bc12062",
+      "name": "Get Quality Review",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Set Review Decision').first().json;\nconst review = $('Get Quality Review').first().json;\n\nif (!review.id) {\n  throw new Error('Quality review not found');\n}\n\nconst allowed = ['approved_for_audio', 'needs_revision', 'rejected'];\n\nif (!allowed.includes(input.decision)) {\n  throw new Error(`Invalid decision: ${input.decision}`);\n}\n\nlet approved = false;\nlet videoStatus = 'needs_revision';\nlet scriptStatus = 'needs_revision';\n\nif (input.decision === 'approved_for_audio') {\n  approved = true;\n  videoStatus = 'approved_for_audio';\n  scriptStatus = 'approved_for_audio';\n}\n\nif (input.decision === 'needs_revision') {\n  approved = false;\n  videoStatus = 'needs_revision';\n  scriptStatus = 'needs_revision';\n}\n\nif (input.decision === 'rejected') {\n  approved = false;\n  videoStatus = 'rejected';\n  scriptStatus = 'rejected';\n}\n\nreturn {\n  json: {\n    quality_review_id: review.id,\n    video_id: review.video_id,\n    script_id: review.script_id,\n\n    review_status: 'completed',\n    approved,\n    decision: input.decision,\n    reviewer_name: input.reviewer_name,\n    notes: input.notes,\n\n    score_overall: input.score_overall,\n    score_title: input.score_title,\n    score_description: input.score_description,\n    score_thumbnail: input.score_thumbnail,\n    score_script: input.score_script,\n    score_factuality: input.score_factuality,\n\n    video_status: videoStatus,\n    script_status: scriptStatus,\n\n    checklist: {\n      title_reviewed: true,\n      description_reviewed: true,\n      tags_reviewed: true,\n      thumbnail_prompt_reviewed: true,\n      script_reviewed: true,\n      factuality_reviewed: true,\n      tone_reviewed: true,\n      ready_for_audio: input.decision === 'approved_for_audio'\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "a630a254-e11b-422c-a234-a94e3d3b3935",
+      "name": "Prepare Review Decision"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "quality_reviews",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.quality_review_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.review_status }}"
+            },
+            {
+              "fieldId": "approved",
+              "fieldValue": "={{ $json.approved }}"
+            },
+            {
+              "fieldId": "decision",
+              "fieldValue": "={{ $json.decision }}"
+            },
+            {
+              "fieldId": "reviewer_name",
+              "fieldValue": "={{ $json.reviewer_name }}"
+            },
+            {
+              "fieldId": "notes",
+              "fieldValue": "={{ $json.notes }}"
+            },
+            {
+              "fieldId": "score_overall",
+              "fieldValue": "={{ $json.score_overall }}"
+            },
+            {
+              "fieldId": "score_title",
+              "fieldValue": "={{ $json.score_title }}"
+            },
+            {
+              "fieldId": "score_description",
+              "fieldValue": "={{ $json.score_description }}"
+            },
+            {
+              "fieldId": "score_thumbnail",
+              "fieldValue": "={{ $json.score_thumbnail }}"
+            },
+            {
+              "fieldId": "score_script",
+              "fieldValue": "={{ $json.score_script }}"
+            },
+            {
+              "fieldId": "score_factuality",
+              "fieldValue": "={{ $json.score_factuality }}"
+            },
+            {
+              "fieldId": "checklist",
+              "fieldValue": "={{ $json.checklist }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        896,
+        0
+      ],
+      "id": "4ff01942-4e40-466e-8744-0fb81c406fa8",
+      "name": "Update Quality Review",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "videos",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.video_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.decision }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "d4057345-1e0c-478c-bfe6-e5bc7bbefaa8",
+      "name": "Update Video Status",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "scripts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.script_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.status }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        0
+      ],
+      "id": "8cb8b2bd-dca9-4cdb-93c3-82c03d3a5e29",
+      "name": "Update Script Status",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Set Review Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Review Decision": {
+      "main": [
+        [
+          {
+            "node": "Get Quality Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Quality Review": {
+      "main": [
+        [
+          {
+            "node": "Prepare Review Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Review Decision": {
+      "main": [
+        [
+          {
+            "node": "Update Quality Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Quality Review": {
+      "main": [
+        [
+          {
+            "node": "Update Video Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Video Status": {
+      "main": [
+        [
+          {
+            "node": "Update Script Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6ffe5775-a32d-45c8-961d-1e81db9bd22a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "63fefac062a793837e11413710d67cf649d62a6e407709d9e139775c592e47e9"
+  },
+  "id": "xYTdymSNU6nXtQCH",
+  "tags": []
+}

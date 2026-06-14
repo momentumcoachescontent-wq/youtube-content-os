@@ -1,0 +1,127 @@
+{
+  "name": "YTOS 01 - Supabase Insert Test",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e70242bc-e973-4547-81b9-5e240e6fd6fa",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"topic\": \"Primera prueba n8n hacia Supabase\",\n  \"source\": \"n8n_manual_test\",\n  \"angle\": \"Validar que n8n puede insertar datos en Supabase\",\n  \"audience\": \"equipo interno\",\n  \"trend_score\": 5,\n  \"audience_fit_score\": 5,\n  \"production_effort_score\": 1,\n  \"final_priority_score\": 5,\n  \"status\": \"test\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "2142eda7-f059-4dfa-a4d3-8233fe622174",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "tableId": "content_ideas",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "topic",
+              "fieldValue": "={{ $json.topic }}"
+            },
+            {
+              "fieldId": "source",
+              "fieldValue": "={{ $json.source }}"
+            },
+            {
+              "fieldId": "angle",
+              "fieldValue": "={{ $json.angle }}"
+            },
+            {
+              "fieldId": "audience",
+              "fieldValue": "={{ $json.audience }}"
+            },
+            {
+              "fieldId": "trend_score",
+              "fieldValue": "={{ $json.trend_score }}"
+            },
+            {
+              "fieldId": "audience_fit_score",
+              "fieldValue": "={{ $json.audience_fit_score }}"
+            },
+            {
+              "fieldId": "production_effort_score",
+              "fieldValue": "={{ $json.production_effort_score }}"
+            },
+            {
+              "fieldId": "final_priority_score",
+              "fieldValue": "={{ $json.final_priority_score }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.status }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "b59bcd17-e66c-4d33-8278-4faf71d7a00c",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "4841474b-3a17-4bc9-bd15-4d0f76c82501",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "63fefac062a793837e11413710d67cf649d62a6e407709d9e139775c592e47e9"
+  },
+  "id": "8fQmsz3MDQShED4j",
+  "tags": []
+}

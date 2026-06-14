@@ -1,0 +1,278 @@
+{
+  "name": "YTOS 03 - Script to Publishing Package",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        -368
+      ],
+      "id": "18346f5d-4f51-4a13-9604-e8862f436768",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"script_id\": \"25bd87a5-5d6c-4310-8120-00c0ac2a1cdb\",\n  \"workflow_name\": \"YTOS 03 - Script to Publishing Package\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -224,
+        -368
+      ],
+      "id": "90f91297-e83e-40a9-88a8-4f641622f01c",
+      "name": "Set Script ID"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-5-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "=\"content\": \"You are a YouTube packaging strategist. Return only valid JSON. Write in Spanish.\"\n   "
+            },
+            {
+              "content": "=\"content\": \"=Create a YouTube publishing package for this script.\\n\\nTitle:\\n{{$json.title}}\\n\\nHook:\\n{{$json.hook}}\\n\\nScript:\\n{{$json.script_text}}\\n\\nReturn only valid JSON with this structure:\\n{\\n  \\\"primary_title\\\": \\\"\\\",\\n  \\\"alternative_titles\\\": [],\\n  \\\"description\\\": \\\"\\\",\\n  \\\"short_description\\\": \\\"\\\",\\n  \\\"tags\\\": [],\\n  \\\"thumbnail_prompt\\\": \\\"\\\",\\n  \\\"thumbnail_text_options\\\": [],\\n  \\\"chapters\\\": [],\\n  \\\"target_keyword\\\": \\\"\\\",\\n  \\\"secondary_keywords\\\": [],\\n  \\\"content_warning_notes\\\": [],\\n  \\\"human_review_checklist\\\": []\\n}\\n\\nRules:\\n- Avoid excessive clickbait.\\n- Optimize for credibility and CTR.\\n- The thumbnail prompt should be visual and specific.\\n- Tags should be concise.\\n- Chapters should include timestamps if possible.\\n- Do not invent claims or personal results.\""
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        224,
+        -368
+      ],
+      "id": "f7e4ed04-56ee-4e13-876e-240d0c38531f",
+      "name": "Generate Publishing Metadata",
+      "credentials": {
+        "openAiApi": {
+          "id": "B7VsF5clSdmXgyrW",
+          "name": "youtube-content-os-openai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.output[0].content[0].text;\n\nlet parsed;\n\ntry {\n  parsed = JSON.parse(raw);\n} catch (error) {\n  throw new Error(`Metadata response is not valid JSON: ${error.message}\\nRaw: ${raw}`);\n}\n\nconst script = $('Get Script From Supabase').first().json;\n\nreturn {\n  json: {\n    script_id: script.id,\n    idea_id: script.idea_id,\n    research_brief_id: script.research_brief_id,\n\n    primary_title: parsed.primary_title,\n    alternative_titles: parsed.alternative_titles || [],\n    description: parsed.description,\n    short_description: parsed.short_description,\n    tags: parsed.tags || [],\n    thumbnail_prompt: parsed.thumbnail_prompt,\n    thumbnail_text_options: parsed.thumbnail_text_options || [],\n    chapters: parsed.chapters || [],\n    target_keyword: parsed.target_keyword,\n    secondary_keywords: parsed.secondary_keywords || [],\n    content_warning_notes: parsed.content_warning_notes || [],\n    human_review_checklist: parsed.human_review_checklist || [],\n\n    metadata_package: parsed\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        -368
+      ],
+      "id": "db27a882-cc7b-401a-8527-dd1c5878ee2f",
+      "name": "Parse Publishing Metadata"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "scripts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.script_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -368
+      ],
+      "id": "c43db774-a038-42f7-8bb7-ad93bd0aa317",
+      "name": "Get Script From Supabase",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "videos",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "script_id",
+              "fieldValue": "={{ $json.script_id }}"
+            },
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $json.primary_title }}"
+            },
+            {
+              "fieldId": "description",
+              "fieldValue": "={{ $json.description }}"
+            },
+            {
+              "fieldId": "tags",
+              "fieldValue": "={{ $json.tags }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "packaging_draft"
+            },
+            {
+              "fieldId": "metadata",
+              "fieldValue": "={{ $json.metadata_package }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        784,
+        -368
+      ],
+      "id": "7c330b20-2b6e-4cdb-ac90-98f7f8986645",
+      "name": "Insert Video Draft",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "scripts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.script_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "packaged"
+            },
+            {
+              "fieldId": "metadata",
+              "fieldValue": "={{ $json.metadata }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        992,
+        -368
+      ],
+      "id": "04a1b8f3-a18b-441e-b708-abdd28b615ab",
+      "name": "Update Script Status",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Set Script ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Script ID": {
+      "main": [
+        [
+          {
+            "node": "Get Script From Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Publishing Metadata": {
+      "main": [
+        [
+          {
+            "node": "Parse Publishing Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Publishing Metadata": {
+      "main": [
+        [
+          {
+            "node": "Insert Video Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Script From Supabase": {
+      "main": [
+        [
+          {
+            "node": "Generate Publishing Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Video Draft": {
+      "main": [
+        [
+          {
+            "node": "Update Script Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "dac6c84b-3b78-494d-bdd9-624937ba924f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "63fefac062a793837e11413710d67cf649d62a6e407709d9e139775c592e47e9"
+  },
+  "id": "bUFPwQHdxJBAliHD",
+  "tags": []
+}

@@ -1,0 +1,574 @@
+{
+  "name": "YTOS 05 - Generate Audio Draft",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -848
+      ],
+      "id": "9d382b2d-ec84-4829-9690-043c53904172",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const script = $json;\n\nif (!script.script_text) {\n  throw new Error('Missing script_text');\n}\n\n// Extrae solo el bloque principal para narración.\n// Evita leer títulos técnicos, scene breakdown, visual notes y shorts.\nlet text = script.script_text;\n\nconst fullScriptMarker = '# Full Script';\nconst sceneMarker = '# Scene Breakdown';\n\nif (text.includes(fullScriptMarker)) {\n  text = text.split(fullScriptMarker)[1];\n}\n\nif (text.includes(sceneMarker)) {\n  text = text.split(sceneMarker)[0];\n}\n\ntext = text\n  .replace(/\\*\\*/g, '')\n  .replace(/#/g, '')\n  .replace(/\\n{3,}/g, '\\n\\n')\n  .trim();\n\nconst maxChars = 3900;\n\n// Para el MVP generamos un primer audio corto si el texto excede el límite.\n// Luego haremos chunking automático.\nconst ttsText = text.length > maxChars ? text.slice(0, maxChars) : text;\n\nreturn {\n  json: {\n    script_id: script.id,\n    idea_id: script.idea_id,\n    research_brief_id: script.research_brief_id,\n    title: script.title,\n    tts_text: ttsText,\n    full_script_length: text.length,\n    was_truncated: text.length > maxChars,\n    voice: 'onyx',\n    model: 'gpt-4o-mini-tts',\n    response_format: 'mp3'\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        -848
+      ],
+      "id": "614df9b3-00c9-46b5-ade4-eebb317defcd",
+      "name": "Prepare TTS Text"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "input": "={\n  \"model\": \"={{$json.model}}\",\n  \"voice\": \"={{$json.voice}}\",\n  \"input\": \"={{$json.tts_text}}\",\n  \"response_format\": \"={{$json.response_format}}\",\n  \"speed\": 1\n}",
+        "voice": "onyx",
+        "options": {
+          "response_format": "mp3",
+          "binaryPropertyOutput": "data"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1568,
+        -848
+      ],
+      "id": "abade8d0-6ce2-4d05-8ced-4cf44faac68a",
+      "name": "OpenAI TTS",
+      "credentials": {
+        "openAiApi": {
+          "id": "B7VsF5clSdmXgyrW",
+          "name": "youtube-content-os-openai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"script_id\": \"25bd87a5-5d6c-4310-8120-00c0ac2a1cdb\",\n  \"video_id\": \"3d828b05-9050-4000-8aae-766b3acf9408\",\n  \"drive_root_folder_id\": \"1Ok5T46aZ6wMZuItSSGQcHPYJ5g0QwfCa\",\n  \"drive_root_folder_name\": \"YTOS_GOOGLE_DRIVE\",\n  \"workflow_name\": \"YTOS 05 - Generate Audio Draft\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        -848
+      ],
+      "id": "a6167d95-9cbb-49b7-8e5a-1336126ace2e",
+      "name": "Set Audio Generation Context"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "drive_folders",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "video_id",
+              "keyValue": "={{ $json.video_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        448,
+        -848
+      ],
+      "id": "67c29a8e-6eda-49a2-b484-c10146135d63",
+      "name": "Check Existing Drive Folders",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "scripts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('Set Audio Generation Context').item.json.script_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        -848
+      ],
+      "id": "64c2ab1e-5fc9-4bbc-8262-dbd84ea6caa8",
+      "name": "Get Script",
+      "alwaysOutputData": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const tts = $('Prepare TTS Text').first().json;\nconst input = $('Set Audio Generation Context').first().json;\nconst currentItem = $input.first();\n\nconst binaryKeys = Object.keys(currentItem.binary || {});\n\nif (binaryKeys.length === 0) {\n  throw new Error('No binary audio found from OpenAI TTS node');\n}\n\n// Normalmente será \"data\", pero lo detectamos por seguridad.\nconst sourceBinaryKey = binaryKeys[0];\nconst sourceBinary = currentItem.binary[sourceBinaryKey];\n\nconst safeTitle = (tts.title || 'untitled')\n  .toLowerCase()\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/[^a-z0-9]+/g, '-')\n  .replace(/^-+|-+$/g, '')\n  .slice(0, 60);\n\nconst fileName = `voiceover_part_001_${safeTitle}.mp3`;\n\nreturn {\n  json: {\n    script_id: tts.script_id,\n    video_id: input.video_id,\n    idea_id: tts.idea_id,\n    research_brief_id: tts.research_brief_id,\n\n    drive_root_folder_id: input.drive_root_folder_id,\n\n    file_name: fileName,\n    mime_type: sourceBinary.mimeType || 'audio/mpeg',\n    file_extension: sourceBinary.fileExtension || 'mp3',\n    file_size_bytes: sourceBinary.fileSize || sourceBinary.bytes || null,\n\n    asset_type: 'voiceover_audio',\n    provider: 'openai',\n    repository: 'google_drive',\n\n    model: tts.model,\n    voice: tts.voice,\n    response_format: tts.response_format,\n    full_script_length: tts.full_script_length,\n    was_truncated: tts.was_truncated,\n\n    folder_type: 'audio',\n    folder_path_logical: `videos/${input.video_id}/03_audio`,\n\n    // Este será el nombre del binary property para el siguiente nodo.\n    binary_property_name: 'data'\n  },\n\n  // Normalizamos el binario para que el siguiente nodo lo reciba como \"data\".\n  binary: {\n    data: {\n      ...sourceBinary,\n      fileName,\n      mimeType: sourceBinary.mimeType || 'audio/mpeg',\n      fileExtension: sourceBinary.fileExtension || 'mp3'\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        -848
+      ],
+      "id": "45891e5d-fa4b-4030-a23a-07529078bd11",
+      "name": "Prepare Google Drive Audio Metadata"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Set Audio Generation Context').item.json.drive_root_folder_id }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1Ok5T46aZ6wMZuItSSGQcHPYJ5g0QwfCa",
+          "mode": "list",
+          "cachedResultName": "YTOS_GOOGLE_DRIVE",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1Ok5T46aZ6wMZuItSSGQcHPYJ5g0QwfCa"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        896,
+        -784
+      ],
+      "id": "49ad59d1-915b-42fe-8b28-8a9b5c5bff75",
+      "name": "Create folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "TJCKkCXrjKK0jaDi",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "=data",
+        "name": "={{ $('Prepare Google Drive Audio Metadata').item.json.file_name }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1Ok5T46aZ6wMZuItSSGQcHPYJ5g0QwfCa",
+          "mode": "list",
+          "cachedResultName": "YTOS_GOOGLE_DRIVE",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1Ok5T46aZ6wMZuItSSGQcHPYJ5g0QwfCa"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2016,
+        -848
+      ],
+      "id": "e551a0fe-accd-4557-8ff6-fee3f6aa9124",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "TJCKkCXrjKK0jaDi",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "dd454e0d-46d6-416a-a944-5d5fb0282c0b",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        -848
+      ],
+      "id": "83f86885-7bfb-4766-a25d-d8cbb7af41bd",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const drive = $input.first().json;\n\n// Contexto fijo del primer video MVP\nconst scriptId = '25bd87a5-5d6c-4310-8120-00c0ac2a1cdb';\nconst videoId = '3d828b05-9050-4000-8aae-766b3acf9408';\nconst projectRootFolderId = '1Ok5T46aZ6wMZuItSSGQcHPYJ5g0QwfCa';\n\nconst driveFileId = drive.id;\n\nconst driveFolderId =\n  Array.isArray(drive.parents) && drive.parents.length > 0\n    ? drive.parents[0]\n    : projectRootFolderId;\n\nif (!driveFileId) {\n  throw new Error('Google Drive upload did not return file id');\n}\n\nif (!driveFolderId) {\n  throw new Error('Google Drive upload did not return parent folder id');\n}\n\nreturn {\n  json: {\n    script_id: scriptId,\n    video_id: videoId,\n\n    asset_type: 'voiceover_audio',\n    provider: 'openai',\n    repository: 'google_drive',\n\n    file_name: drive.name,\n    mime_type: drive.mimeType || 'audio/mp3',\n\n    drive_file_id: driveFileId,\n    drive_folder_id: driveFolderId,\n    drive_web_view_link: drive.webViewLink || null,\n    drive_web_content_link: drive.webContentLink || null,\n\n    asset_status: 'created',\n    version: 1,\n\n    metadata: {\n      storage_strategy: 'google_drive_project_root',\n      project_root_folder_id: projectRootFolderId,\n      actual_parent_folder_id: driveFolderId,\n\n      folder_type: 'project_root',\n      folder_path_logical: 'YTOS_GOOGLE_DRIVE/',\n\n      file_size_bytes: drive.size ? Number(drive.size) : null,\n      quota_bytes_used: drive.quotaBytesUsed ? Number(drive.quotaBytesUsed) : null,\n\n      md5_checksum: drive.md5Checksum || null,\n      sha1_checksum: drive.sha1Checksum || null,\n      sha256_checksum: drive.sha256Checksum || null,\n\n      google_drive: {\n        id: drive.id,\n        name: drive.name,\n        mimeType: drive.mimeType,\n        webViewLink: drive.webViewLink,\n        webContentLink: drive.webContentLink,\n        parents: drive.parents || [],\n        createdTime: drive.createdTime,\n        modifiedTime: drive.modifiedTime,\n        size: drive.size || null,\n        shared: drive.shared || false\n      },\n\n      note: 'Audio stored directly in YTOS_GOOGLE_DRIVE root. Folder-per-video structure pending.'\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2224,
+        -848
+      ],
+      "id": "e54f99c1-0a63-4c55-92ad-30ed0e82a998",
+      "name": "Prepare Audio Asset Record"
+    },
+    {
+      "parameters": {
+        "tableId": "assets",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "script_id",
+              "fieldValue": "={{ $json.script_id }}"
+            },
+            {
+              "fieldId": "video_id",
+              "fieldValue": "={{ $json.video_id }}"
+            },
+            {
+              "fieldId": "asset_type",
+              "fieldValue": "={{ $json.asset_type }}"
+            },
+            {
+              "fieldId": "provider",
+              "fieldValue": "={{ $json.provider }}"
+            },
+            {
+              "fieldId": "repository",
+              "fieldValue": "={{ $json.repository }}"
+            },
+            {
+              "fieldId": "file_name",
+              "fieldValue": "={{ $json.file_name }}"
+            },
+            {
+              "fieldId": "mime_type",
+              "fieldValue": "={{ $json.mime_type }}"
+            },
+            {
+              "fieldId": "drive_file_id",
+              "fieldValue": "={{ $json.drive_file_id }}"
+            },
+            {
+              "fieldId": "drive_folder_id",
+              "fieldValue": "={{ $json.drive_folder_id }}"
+            },
+            {
+              "fieldId": "drive_web_view_link",
+              "fieldValue": "={{ $json.drive_web_view_link }}"
+            },
+            {
+              "fieldId": "drive_web_content_link",
+              "fieldValue": "={{ $json.drive_web_content_link }}"
+            },
+            {
+              "fieldId": "asset_status",
+              "fieldValue": "={{ $json.asset_status }}"
+            },
+            {
+              "fieldId": "version",
+              "fieldValue": "={{ $json.version }}"
+            },
+            {
+              "fieldId": "metadata",
+              "fieldValue": "={{ JSON.stringify($json.metadata) }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2576,
+        -704
+      ],
+      "name": "Insert Audio Asset Record",
+      "id": "c838a5f9-a77f-4d68-8212-d4c9afc779bb",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "scripts",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Prepare Audio Asset Record').item.json.script_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "audio_generated"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2800,
+        -704
+      ],
+      "name": "Update Script Status",
+      "id": "58a6a16f-71c7-4a86-b15a-68aa67a5b712",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "videos",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Prepare Audio Asset Record').item.json.video_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "audio_generated"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        3024,
+        -704
+      ],
+      "name": "Update Video Status",
+      "id": "d4fd6775-774c-4966-9c51-04b8a9b6548b",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UIknKvhD5OX1o6c6",
+          "name": "YTOS_SUPABASE_SERVICE"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Set Audio Generation Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare TTS Text": {
+      "main": [
+        [
+          {
+            "node": "OpenAI TTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI TTS": {
+      "main": [
+        [
+          {
+            "node": "Prepare Google Drive Audio Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Audio Generation Context": {
+      "main": [
+        [
+          {
+            "node": "Check Existing Drive Folders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing Drive Folders": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Script": {
+      "main": [
+        [
+          {
+            "node": "Prepare TTS Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Google Drive Audio Metadata": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create folder": {
+      "main": [
+        [
+          {
+            "node": "Get Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file": {
+      "main": [
+        [
+          {
+            "node": "Prepare Audio Asset Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Get Script",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Audio Asset Record": {
+      "main": [
+        [
+          {
+            "node": "Insert Audio Asset Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Audio Asset Record": {
+      "main": [
+        [
+          {
+            "node": "Update Script Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Script Status": {
+      "main": [
+        [
+          {
+            "node": "Update Video Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "041ebba7-f37f-40b7-b987-f616e1cfac78",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "63fefac062a793837e11413710d67cf649d62a6e407709d9e139775c592e47e9"
+  },
+  "id": "YNRrwPvaN18Udths",
+  "tags": []
+}
